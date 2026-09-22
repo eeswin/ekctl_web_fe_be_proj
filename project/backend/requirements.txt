@@ -1,0 +1,12 @@
+# API 서버
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+python-multipart==0.0.32
+python-dotenv==1.2.3
+
+# OCR (GPT Vision)
+openai==3.16.2
+
+# 산출물 (엑셀 · 보고서)
+openpyxl==3.1.5
+python-docx==1.2.0

@@ -1,0 +1,2 @@
+# Windows 배치 스크립트 CRLF 유지
+*.bat text eol=crlf

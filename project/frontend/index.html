@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QUEST · RE 판정 대시보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Montserrat:wght@500;600&family=JetBrains+Mono&display=swap">
+<style>
+  /* ---------- DESIGN.md 토큰 ---------- */
+  :root {
+    --primary: #0055A5; --primary-hover: #004A90; --primary-container: #E7F1FD;
+    --brand-reflex: #30418F; --accent: #006ED6; --dark: #001A33;
+    --n900: #0F0F10; --n800: #27282B; --n600: #575A60; --n500: #898D95; --n400: #A4A7AD;
+    --n300: #DADBDD; --n200: #E3E3E3; --n100: #F2F5F8; --n50: #F5F7FA; --white: #FFFFFF;
+    --pass: #41AD48; --pass-strong: #1E6B28; --pass-container: #E8F6EA;
+    --fail: #D6323C; --fail-strong: #A8232C; --fail-container: #FBE9EA;
+    --warn: #F2A900; --warn-container: #FFF8D0; --info: #006ED6;
+    --font-kr: "SUIT", "Pretendard", -apple-system, "Malgun Gothic", sans-serif;
+    --font-num: "Poppins", var(--font-kr);
+    --font-btn: "Montserrat", var(--font-kr);
+    --font-mono: "JetBrains Mono", Consolas, monospace;
+    --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-full: 9999px;
+    --shadow-sm: 0 4px 16px rgba(0, 0, 0, .08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--n50); color: var(--n800);
+    font: 400 16px/1.6 var(--font-kr); letter-spacing: -0.04em; word-break: keep-all;
+  }
+  h1, h2 { margin: 0; color: var(--n900); }
+  button, input { font: inherit; letter-spacing: inherit; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  svg { flex: none; }
+
+  /* ---------- 헤더 ---------- */
+  .app-header {
+    position: sticky; top: 0; z-index: 5; height: 64px; background: var(--white);
+    border-bottom: 1px solid var(--n200);
+  }
+  .header-inner {
+    max-width: 1400px; height: 100%; margin: 0 auto; padding: 0 24px;
+    display: flex; align-items: center; gap: 32px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo-mark { color: var(--brand-reflex); font: 600 22px/28px var(--font-num); letter-spacing: 0; }
+  .brand h1 { font-size: 20px; font-weight: 700; line-height: 1.5; }
+  .steps { display: flex; gap: 24px; height: 100%; margin: 0 auto 0 0; padding: 0; list-style: none; }
+  .steps li {
+    display: flex; align-items: center; gap: 8px; height: 100%; color: var(--n600);
+    font-size: 14px; border-bottom: 2px solid transparent;
+  }
+  .steps li .no { font: 600 12px/1 var(--font-num); letter-spacing: .04em; }
+  .steps li.done { color: var(--pass-strong); }
+  .steps li.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+  @media (max-width: 992px) { .steps { display: none; } .brand { margin-right: auto; } }
+
+  /* ---------- 레이아웃 · 카드 ---------- */
+  main { max-width: 1400px; margin: 0 auto; padding: 40px 24px 80px; display: grid; gap: 40px; }
+  .card { background: var(--white); border: 1px solid var(--n300); border-radius: var(--r-lg); padding: 24px; }
+  .step { display: grid; gap: 24px; transition: opacity .2s; }
+  .step.locked { opacity: .45; user-select: none; }
+  .step-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .step-no { color: var(--primary); font: 600 12px/1.2 var(--font-num); letter-spacing: .04em; }
+  .step-head h2 { font-size: 24px; font-weight: 700; line-height: 1.4; }
+  .lock-hint { margin-left: auto; color: var(--n600); font-size: 12px; display: none; }
+  .step.locked .lock-hint { display: inline; }
+  .row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  .row .spacer { margin-left: auto; }
+  .caption { color: var(--n600); font-size: 12px; line-height: 1.5; letter-spacing: 0; }
+  .tag {
+    display: inline-block; padding: 2px 8px; background: var(--n100); border-radius: var(--r-xs);
+    color: var(--n800); font-size: 12px; letter-spacing: 0;
+  }
+  .mono { font-family: var(--font-mono); font-size: 12px; }
+
+  /* ---------- 버튼 ---------- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px;
+    padding: 0 20px; border: 1px solid transparent; border-radius: var(--r-full); cursor: pointer;
+    font: 500 14px/1.5 var(--font-btn); letter-spacing: 0; white-space: nowrap; box-shadow: none;
+  }
+  .btn-primary { background: var(--primary); color: var(--white); }
+  .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+  .btn-secondary { background: var(--white); color: var(--primary); border-color: var(--n300); }
+  .btn-secondary:hover:not(:disabled) { background: var(--n100); }
+  .btn-ghost { height: 40px; background: var(--n50); color: var(--primary); }
+  .btn-ghost:hover:not(:disabled) { background: var(--n100); }
+  .btn:disabled { background: var(--n300); color: var(--n500); border-color: transparent; cursor: not-allowed; }
+
+  /* ---------- 업로더 · 칩 ---------- */
+  .dropzone {
+    height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; border: 2px dashed var(--n300); border-radius: var(--r-lg); background: var(--white);
+    color: var(--n600); cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  .dropzone strong { color: var(--n800); font-weight: 700; }
+  .dropzone svg { color: var(--n500); width: 24px; height: 24px; }
+  .dropzone.over { background: var(--primary-container); border-color: var(--primary); }
+  .dropzone.disabled { pointer-events: none; opacity: .6; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips:empty { display: none; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 4px 0 12px;
+    background: var(--n100); border-radius: var(--r-full); font-size: 14px; letter-spacing: -0.02em;
+  }
+  .chip .kind { color: var(--primary); font: 500 11px/1 var(--font-num); letter-spacing: .04em; }
+  .chip button {
+    display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center;
+    border: 0; border-radius: var(--r-full); background: transparent; color: var(--n600); cursor: pointer;
+  }
+  .chip button:hover { background: var(--n300); }
+  .chip button svg { width: 14px; height: 14px; }
+
+  /* ---------- 입력 ---------- */
+  .field { display: flex; flex-direction: column; gap: 8px; min-width: 200px; }
+  .field label { color: var(--n600); font: 500 12px/1.2 var(--font-num); letter-spacing: .04em; }
+  .input {
+    height: 44px; padding: 0 12px; border: 1px solid transparent; border-radius: var(--r-sm);
+    background: var(--n100); color: var(--n800);
+  }
+  .input:focus { background: var(--white); outline: 2px solid var(--primary); outline-offset: 2px; }
+  .input.error { background: var(--fail-container); border-color: var(--fail); }
+  .input.num { font-family: var(--font-num); font-feature-settings: "tnum"; letter-spacing: 0; }
+  .meta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 16px; align-items: end; }
+  @media (max-width: 992px) { .meta-grid { grid-template-columns: 1fr; } }
+
+  /* ---------- 진행 바 ---------- */
+  .progress { display: grid; gap: 8px; }
+  .progress[hidden] { display: none; }
+  .progress .track { height: 6px; background: var(--n100); border-radius: var(--r-full); overflow: hidden; }
+  .progress .bar {
+    width: 35%; height: 100%; background: var(--info); border-radius: var(--r-full);
+    animation: slide 1.2s ease-in-out infinite;
+  }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+
+  /* ---------- KPI ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 768px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .kpi {
+    position: relative; padding: 20px 20px 20px 24px; overflow: hidden;
+    background: var(--white); border: 1px solid var(--n300); border-radius: var(--r-md);
+  }
+  .kpi::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--bar, var(--n300)); }
+  .kpi .label {
+    display: flex; align-items: center; gap: 6px; color: var(--n600);
+    font: 500 12px/1.2 var(--font-num); letter-spacing: .04em;
+  }
+  .kpi .label svg { color: var(--bar, var(--n500)); }
+  .kpi .value {
+    margin-top: 8px; color: var(--val, var(--n900));
+    font: 600 32px/1.1 var(--font-num); font-feature-settings: "tnum"; letter-spacing: 0;
+  }
+  .kpi.pass { --bar: var(--pass); --val: var(--pass); }
+  .kpi.fail { --bar: var(--fail); --val: var(--fail); }
+  .kpi.warn { --bar: var(--warn); --val: var(--warn); }
+
+  /* ---------- 표 ---------- */
+  .table-wrap { max-height: 440px; overflow: auto; border: 1px solid var(--n300); border-radius: var(--r-md); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; letter-spacing: -0.02em; }
+  th {
+    position: sticky; top: 0; z-index: 1; height: 40px; padding: 0 16px; background: var(--n50);
+    border-bottom: 1px solid var(--n200); color: var(--n600); text-align: left; white-space: nowrap;
+    font: 500 12px/1.2 var(--font-num); letter-spacing: .04em;
+  }
+  td { height: 44px; padding: 0 16px; border-bottom: 1px solid var(--n200); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--n50); }
+  tr.row-fail td:first-child { box-shadow: inset 4px 0 0 var(--fail); }
+  .num { text-align: right; font-family: var(--font-num); font-feature-settings: "tnum"; letter-spacing: 0; }
+  th.num { text-align: right; }
+  .empty td { height: 120px; text-align: center; color: var(--n600); white-space: normal; }
+
+  /* ---------- 배지 ---------- */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 10px 0 6px;
+    border-radius: var(--r-full); font: 500 12px/1 var(--font-num); letter-spacing: .04em; white-space: nowrap;
+  }
+  .badge svg { width: 14px; height: 14px; }
+  .badge-pass { background: var(--pass-container); color: var(--pass-strong); }
+  .badge-fail { background: var(--fail-container); color: var(--fail-strong); }
+  .badge-warn { background: var(--warn-container); color: var(--n800); }
+  .badge-muted { background: var(--n100); color: var(--n600); }
+
+  /* ---------- 토스트 ---------- */
+  .toasts { position: fixed; top: 80px; right: 24px; z-index: 10; display: grid; gap: 8px; }
+  .toast {
+    display: flex; align-items: center; gap: 8px; min-width: 280px; max-width: 440px; padding: 12px 16px;
+    background: var(--white); border: 1px solid var(--n300); border-left: 4px solid var(--c);
+    border-radius: var(--r-sm); box-shadow: var(--shadow-sm); font-size: 14px; letter-spacing: -0.02em;
+  }
+  .toast svg { color: var(--c); }
+  .toast-success { --c: var(--pass); }
+  .toast-error { --c: var(--fail); }
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand"><span class="logo-mark">QUEST</span><h1>RE 판정 대시보드</h1></div>
+    <ol class="steps" aria-label="진행 단계">
+      <li data-step="1"><span class="no">STEP 1</span>이미지 판독</li>
+      <li data-step="2"><span class="no">STEP 2</span>판정</li>
+      <li data-step="3"><span class="no">STEP 3</span>보고서 작성</li>
+    </ol>
+    <span id="conn" class="badge badge-muted" title="백엔드 연결 상태">연결 확인 중</span>
+  </div>
+</header>
+
+<main>
+  <!-- STEP 1 : 이미지 판독 -->
+  <section id="step1" class="card step" aria-labelledby="s1-title">
+    <div class="step-head">
+      <span class="step-no">STEP 1</span><h2 id="s1-title">이미지 판독 (OCR)</h2>
+      <span class="caption">스펙트럼 아날라이저 캡처 → gpt-5.6-luna 로 Mkr1 주파수 · 전력 추출</span>
+    </div>
+    <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="PNG 파일 업로드">
+      <span id="icon-upload"></span>
+      <span><strong>PNG 드래그 또는 클릭</strong> · 여러 장 선택 가능</span>
+      <input id="fileInput" type="file" accept="image/png" multiple hidden>
+    </div>
+    <div id="chips" class="chips"></div>
+    <div class="row">
+      <button id="btnSamples" class="btn btn-ghost" type="button">기본 샘플 3종 불러오기</button>
+      <span class="spacer"></span>
+      <button id="btnReset" class="btn btn-secondary" type="button">초기화</button>
+      <button id="btnAnalyze" class="btn btn-primary" type="button">분석 실행</button>
+    </div>
+    <div id="progress" class="progress" hidden>
+      <div class="track"><div class="bar"></div></div>
+      <span id="progressLabel" class="caption"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>파일명</th><th class="num">Center (GHz)</th><th class="num">Mkr1 주파수 (GHz)</th>
+          <th class="num">Mkr1 전력 (µW)</th><th>측정시각</th><th>상태</th>
+        </tr></thead>
+        <tbody id="ocrBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- STEP 2 : 판정 -->
+  <section id="step2" class="card step locked" aria-labelledby="s2-title">
+    <div class="step-head">
+      <span class="step-no">STEP 2</span><h2 id="s2-title">판정</h2>
+      <span class="lock-hint">STEP 1 판독 결과 1건 이상 시 활성</span>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="cf">보정계수 CF (dB)</label>
+        <input id="cf" class="input num" type="number" step="0.1" value="-50.0">
+      </div>
+      <button id="btnRejudge" class="btn btn-secondary" type="button">재판정</button>
+      <span class="spacer"></span>
+      <div class="caption">
+        <span class="tag">FCC Part 15 Subpart B Class B (3 m)</span>
+        <span class="mono">dBµV/m = 10·log10(µW/1000) + 107 + CF</span> · 마진 = Limit − 측정값
+      </div>
+    </div>
+    <div id="kpis" class="kpis"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th class="num">순번</th><th>파일명</th><th class="num">주파수 (MHz)</th><th class="num">측정전력 (µW)</th>
+          <th class="num">dBm</th><th class="num">dBµV/m</th><th class="num">Limit (dBµV/m)</th>
+          <th class="num">마진 (dB)</th><th>판정</th>
+        </tr></thead>
+        <tbody id="judgeBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- STEP 3 : 보고서 작성 -->
+  <section id="step3" class="card step locked" aria-labelledby="s3-title">
+    <div class="step-head">
+      <span class="step-no">STEP 3</span><h2 id="s3-title">보고서 작성</h2>
+      <span class="lock-hint">STEP 2 판정 결과 존재 시 활성</span>
+    </div>
+    <div class="meta-grid">
+      <div class="field"><label for="tester">담당자</label><input id="tester" class="input" type="text" autocomplete="off"></div>
+      <div class="field"><label for="sampleName">시료명</label><input id="sampleName" class="input" type="text" autocomplete="off"></div>
+      <div class="field"><label for="reviewer">검토자</label><input id="reviewer" class="input" type="text" autocomplete="off"></div>
+      <button id="btnReport" class="btn btn-secondary" type="button"><span id="icon-download"></span>보고서 (DOCX) 다운로드</button>
+    </div>
+    <span class="caption">report_template.docx 기반 · 서버 인메모리 렌더링 → re_report.docx</span>
+  </section>
+</main>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script>
+  const $ = (sel) => document.querySelector(sel);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmt = (v, digits, sign = false) => (v == null ? '—' : (sign && v > 0 ? '+' : '') + Number(v).toFixed(digits));
+
+  const svg = (d) => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const ICON = {
+    check: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+    x: svg('<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>'),
+    alert: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7.5V13M12 16.5v.01"/>'),
+    list: svg('<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>'),
+    upload: svg('<path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4"/>'),
+    download: svg('<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4"/>'),
+  };
+  // 판정 표기 = 색 + 텍스트 라벨 + 아이콘 (DESIGN 판정색 규칙)
+  const BADGE = {
+    OK: ['pass', 'check', 'OK'], PASS: ['pass', 'check', 'PASS'],
+    OCR_FAIL: ['fail', 'x', 'OCR 실패'], FAIL: ['fail', 'x', 'FAIL'],
+    'N/A': ['warn', 'alert', 'N/A'], INCOMPLETE: ['warn', 'alert', 'INCOMPLETE'],
+  };
+  const badge = (key) => {
+    const [cls, icon, label] = BADGE[key] ?? ['warn', 'alert', key];
+    return `<span class="badge badge-${cls}">${ICON[icon]}${esc(label)}</span>`;
+  };
+
+  const state = { files: [], samples: [], ocr: [], judge: null, busy: false };
+
+  // ---------- API ----------
+  async function api(path, options = {}) {
+    let res;
+    try {
+      res = await fetch(path, options);
+    } catch {
+      throw new Error('백엔드 연결 실패 — 서버 실행 상태 확인 필요');
+    }
+    if (!res.ok) {
+      let msg = `요청 실패 (HTTP ${res.status})`;
+      try {
+        const { detail } = await res.json();
+        if (detail) msg = typeof detail === 'string' ? detail : detail[0]?.msg ?? msg;
+      } catch { /* JSON 아님 */ }
+      throw new Error(msg);
+    }
+    return res;
+  }
+  const postJson = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  async function checkHealth() {
+    const el = $('#conn');
+    try {
+      const h = await (await api('/api/health')).json();
+      el.className = `badge badge-${h.api_key_loaded ? 'pass' : 'warn'}`;
+      el.innerHTML = h.api_key_loaded ? `${ICON.check}Key 로드` : `${ICON.alert}dry-run`;
+      el.title = h.api_key_loaded ? 'OPENAI_API_KEY 로드됨' : 'OPENAI_API_KEY 미설정 — OCR 불가';
+    } catch {
+      el.className = 'badge badge-fail';
+      el.innerHTML = `${ICON.x}연결 실패`;
+    }
+  }
+
+  // ---------- 동작 ----------
+  function addFiles(list) {
+    const all = [...list];
+    const pngs = all.filter((f) => f.type === 'image/png' || /\.png$/i.test(f.name));
+    if (pngs.length < all.length) toast('error', 'PNG 파일만 업로드 가능');
+    for (const f of pngs) {
+      if (!state.files.some((x) => x.name === f.name && x.size === f.size)) state.files.push(f);
+    }
+    render();
+  }
+
+  async function loadSamples() {
+    try {
+      state.samples = (await (await api('/api/samples')).json()).files;
+      toast('success', `기본 샘플 ${state.samples.length}종 로드`);
+    } catch (e) {
+      toast('error', e.message);
+    }
+    render();
+  }
+
+  function cfValue() {
+    const input = $('#cf');
+    const v = parseFloat(input.value);
+    input.classList.toggle('error', Number.isNaN(v));
+    return Number.isNaN(v) ? null : v;
+  }
+
+  async function analyze() {
+    const count = state.files.length + state.samples.length;
+    const cf = cfValue();
+    if (!count) return;
+    if (cf === null) return toast('error', 'CF 값은 숫자 입력 필요');
+    state.ocr = [];
+    state.judge = null; // 재판독 → 이전 판정 무효화 · STEP 3 재잠금
+    setBusy(true, `이미지 판독 · 판정 중 — ${count}장 (gpt-5.6-luna)`);
+    const form = new FormData();
+    state.files.forEach((f) => form.append('files', f));
+    form.append('use_samples', String(state.samples.length > 0));
+    form.append('cf_db', String(cf));
+    try {
+      const data = await (await api('/api/analyze', { method: 'POST', body: form })).json();
+      state.ocr = data.ocr;
+      state.judge = { rows: data.rows, summary: data.summary, cf_db: data.cf_db };
+      const failed = data.ocr.filter((r) => r.status !== 'OK').length;
+      if (failed) toast('error', `판독 실패 ${failed}건 — 해당 이미지 판정 제외`);
+      else toast('success', `분석 완료 · ${data.ocr.length}건`);
+    } catch (e) {
+      toast('error', e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // CF 변경 시 OCR 재호출 없이 기존 판독 결과로 재판정
+  async function rejudge() {
+    const cf = cfValue();
+    if (cf === null) return toast('error', 'CF 값은 숫자 입력 필요');
+    if (!state.ocr.some((r) => r.status === 'OK')) return;
+    setBusy(true, `CF ${cf.toFixed(1)} dB 기준 재판정 중`);
+    try {
+      state.judge = await (await postJson('/api/judge', { ocr: state.ocr, cf_db: cf })).json();
+      toast('success', `CF ${cf.toFixed(1)} dB 기준 재판정 완료`);
+    } catch (e) {
+      toast('error', e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadReport() {
+    const body = {
+      ...state.judge,
+      tester: $('#tester').value.trim(),
+      sample_name: $('#sampleName').value.trim(),
+      reviewer: $('#reviewer').value.trim(),
+    };
+    setBusy(true, '보고서 렌더링 중');
+    try {
+      const blob = await (await postJson('/api/report', body)).blob();
+      const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 're_report.docx' });
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast('success', '보고서 (DOCX) 다운로드 완료');
+    } catch (e) {
+      toast('error', e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function reset() {
+    Object.assign(state, { files: [], samples: [], ocr: [], judge: null });
+    $('#fileInput').value = '';
+    render();
+  }
+
+  // ---------- 렌더링 ----------
+  function setBusy(busy, label = '') {
+    state.busy = busy;
+    $('#progress').hidden = !busy;
+    $('#progressLabel').textContent = label;
+    render();
+  }
+
+  function toast(type, msg) {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    el.innerHTML = `${type === 'error' ? ICON.x : ICON.check}<span>${esc(msg)}</span>`;
+    $('#toasts').append(el);
+    setTimeout(() => el.remove(), type === 'error' ? 6000 : 4000);
+  }
+
+  function renderChips() {
+    const sample = state.samples.length
+      ? `<span class="chip"><span class="kind">SAMPLE</span>${esc(state.samples.join(', '))}<button type="button" data-remove="samples" aria-label="기본 샘플 제거">${ICON.x}</button></span>`
+      : '';
+    const files = state.files.map((f, i) =>
+      `<span class="chip"><span class="kind">PNG</span>${esc(f.name)}<button type="button" data-remove="${i}" aria-label="${esc(f.name)} 제거">${ICON.x}</button></span>`).join('');
+    $('#chips').innerHTML = sample + files;
+  }
+
+  function renderOcr() {
+    $('#ocrBody').innerHTML = state.ocr.length
+      ? state.ocr.map((r) => `<tr>
+          <td>${esc(r.file)}</td><td class="num">${fmt(r.center_freq_ghz, 6)}</td>
+          <td class="num">${fmt(r.marker_freq_ghz, 6)}</td><td class="num">${fmt(r.marker_power_uw, 2)}</td>
+          <td>${esc(r.timestamp ?? '—')}</td><td>${badge(r.status)}</td></tr>`).join('')
+      : '<tr class="empty"><td colspan="6">PNG 업로드 또는 기본 샘플을 불러온 뒤 분석을 실행하면 판독 결과가 표시됩니다</td></tr>';
+  }
+
+  function renderJudge() {
+    const j = state.judge;
+    const s = j?.summary;
+    const verdictCls = { PASS: 'pass', FAIL: 'fail', INCOMPLETE: 'warn' }[s?.verdict] ?? '';
+    const verdictIcon = { pass: ICON.check, fail: ICON.x, warn: ICON.alert }[verdictCls] ?? ICON.alert;
+    $('#kpis').innerHTML = [
+      ['', ICON.list, '총 측정 건수', s?.total ?? '—'],
+      ['pass', ICON.check, 'PASS', s?.pass ?? '—'],
+      ['fail', ICON.x, 'FAIL', s?.fail ?? '—'],
+      [verdictCls, verdictIcon, '종합판정', s?.verdict ?? '—'],
+    ].map(([cls, icon, label, value]) =>
+      `<div class="kpi ${cls}"><div class="label">${icon}${label}</div><div class="value">${esc(value)}</div></div>`).join('');
+
+    $('#judgeBody').innerHTML = j?.rows.length
+      ? j.rows.map((r) => `<tr class="${r.verdict === 'FAIL' ? 'row-fail' : ''}">
+          <td class="num">${r.no}</td><td>${esc(r.file)}</td><td class="num">${fmt(r.freq_mhz, 3)}</td>
+          <td class="num">${fmt(r.power_uw, 2)}</td><td class="num">${fmt(r.dbm, 2)}</td>
+          <td class="num">${fmt(r.dbuv_m, 2)}</td><td class="num">${fmt(r.limit, 1)}</td>
+          <td class="num">${fmt(r.margin, 2, true)}</td><td>${badge(r.verdict)}</td></tr>`).join('')
+      : '<tr class="empty"><td colspan="9">측정 데이터를 업로드하면 판정 결과가 표시됩니다</td></tr>';
+  }
+
+  function lock(sel, locked) {
+    const el = $(sel);
+    el.classList.toggle('locked', locked);
+    el.inert = locked; // 흐림 + 조작 차단
+  }
+
+  function render() {
+    const hasInput = state.files.length + state.samples.length > 0;
+    const step2 = state.ocr.length > 0;
+    const step3 = !!state.judge && state.judge.rows.length > 0;
+    renderChips();
+    renderOcr();
+    renderJudge();
+    lock('#step2', !step2);
+    lock('#step3', !step3);
+    $('#dropzone').classList.toggle('disabled', state.busy);
+    $('#btnSamples').disabled = state.busy || state.samples.length > 0;
+    $('#btnReset').disabled = state.busy;
+    $('#btnAnalyze').disabled = state.busy || !hasInput;
+    $('#btnRejudge').disabled = state.busy || !state.ocr.some((r) => r.status === 'OK');
+    $('#btnReport').disabled = state.busy || !step3;
+    const active = step3 ? 3 : step2 ? 2 : 1;
+    document.querySelectorAll('.steps li').forEach((li) => {
+      const n = Number(li.dataset.step);
+      li.classList.toggle('active', n === active);
+      li.classList.toggle('done', n < active);
+    });
+  }
+
+  // ---------- 이벤트 ----------
+  const dz = $('#dropzone');
+  $('#icon-upload').outerHTML = ICON.upload;
+  $('#icon-download').outerHTML = ICON.download;
+  dz.addEventListener('click', () => $('#fileInput').click());
+  dz.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#fileInput').click(); } });
+  dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('over'); addFiles(e.dataTransfer.files); });
+  $('#fileInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+  $('#chips').addEventListener('click', (e) => {
+    const key = e.target.closest('[data-remove]')?.dataset.remove;
+    if (key === undefined) return;
+    if (key === 'samples') state.samples = [];
+    else state.files.splice(Number(key), 1);
+    render();
+  });
+  $('#btnSamples').addEventListener('click', loadSamples);
+  $('#btnReset').addEventListener('click', reset);
+  $('#btnAnalyze').addEventListener('click', analyze);
+  $('#btnRejudge').addEventListener('click', rejudge);
+  $('#btnReport').addEventListener('click', downloadReport);
+  $('#cf').addEventListener('change', () => { if (state.judge) rejudge(); }); // 판정된 경우에만 자동 재판정
+
+  render();
+  checkHealth();
+</script>
+</body>
+</html>
